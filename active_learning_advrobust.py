@@ -31,23 +31,22 @@ def estimate_entropy(
     with gpytorch.settings.fast_pred_var():
         for model, _lh in M:
             model.eval()
-            post = model(X_t) ## assume this is noiseless
+            post = model(X_t) 
             mu_list.append(post.mean)
             var_list.append(post.variance.clamp_min(1e-12))
 
-    mu = torch.stack(mu_list, dim=1)   # [N,K]
-    var = torch.stack(var_list, dim=1) # [N,K]
+    mu = torch.stack(mu_list, dim=1)   
+    var = torch.stack(var_list, dim=1)
 
     eps = torch.randn((Ns, N, K), dtype=dtype, device=device)
     samples = mu.unsqueeze(0) + torch.sqrt(var).unsqueeze(0) * eps
 
-    dbest = torch.argmax(samples, dim=2)  # [Ns, N]
+    dbest = torch.argmax(samples, dim=2)  
 
-    one_hot = F.one_hot(dbest.to(torch.int64), num_classes=K).to(dtype)  # [Ns,N,K]
-    p = one_hot.mean(dim=0).clamp_min(torch.finfo(dtype).eps)            # [N,K]
+    one_hot = F.one_hot(dbest.to(torch.int64), num_classes=K).to(dtype)  
+    p = one_hot.mean(dim=0).clamp_min(torch.finfo(dtype).eps)           
 
-    H = -(p * p.log()).sum(dim=1)  # [N]
-    # print (H)
+    H = -(p * p.log()).sum(dim=1)  
     return H.detach().cpu().numpy()[0]
 
 @torch.no_grad()
@@ -63,7 +62,7 @@ def compute_acc(
     means = []
     for k in range(Ndec):
         model_k, lh_k = M[k]
-        mu_k, _ = _pred_mean_var_y(model_k, lh_k, X) ### noisy prediction
+        mu_k, _ = _pred_mean_var_y(model_k, lh_k, X) 
         means.append(mu_k.reshape(-1, 1))
 
     U = torch.cat(means, dim=1)
@@ -79,9 +78,7 @@ def compute_acc_adv(
     dtype: torch.dtype = torch.float64,
 ) -> float:
     d_true = d_true.reshape(-1)
-    # print (d_true)
-    # print (d_pred)
-    # print ( float((d_pred == d_true).mean()))
+    
     return float((d_pred == d_true).mean())
 
 def activelearning(
@@ -118,7 +115,6 @@ def activelearning(
   
 
     for i in range(Nacq):
-        # Select index of next query
         t1 = time.time()
         if criterion == "random_sampling":
             i_star = random_sampling(query)
@@ -162,19 +158,16 @@ def activelearning(
         dq = int(query["d"][i_star])
         print(f"Acq number {i+1} selected decision {dq} at ")
 
-        # Move point query -> train
         x_new = query["x"][i_star : i_star + 1, :]
         y_new = query["y"][i_star : i_star + 1, :]
         train["x"] = np.vstack((train["x"], x_new))
         train["y"] = np.vstack((train["y"], y_new))
         train["d"] = np.hstack((train["d"], np.array([dq], dtype=train["d"].dtype)))
-        ### append it to the data list
 
         query["x"] = np.delete(query["x"], i_star, axis=0)
         query["y"] = np.delete(query["y"], i_star, axis=0)
         query["d"] = np.delete(query["d"], i_star, axis=0)
 
-        # Retrain only the GP for decision dq
         idx = np.where(train["d"] == dq)[0]
         X_dq = torch.as_tensor(train["x"][idx, :], dtype=dtype, device=device)
         y_dq = torch.as_tensor(train["y"][idx, :].reshape(-1), dtype=dtype, device=device)
@@ -199,9 +192,7 @@ def activelearning(
         M0[dq] = (model, lik)
 
         acc[i + 1],dpred[i+1] = compute_acc(M0, Ndec, test["x"], d_true, device=device, dtype=dtype)
-        # dpred_advs = np.full((config.Nadv_test,), dpred[i+1])
 
         P[i + 1]   = estimate_entropy(M0, test["x"], Ns=config.Ns,device=device, dtype=dtype)
-        # acc_advs[i+1] = compute_acc_adv(d_true_advs, dpred_advs, device=device, dtype=dtype)
     
     return acc, dpred, P
