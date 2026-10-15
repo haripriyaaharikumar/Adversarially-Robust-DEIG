@@ -124,13 +124,7 @@ def generation_gpytorch_like_gpy(
     n_grid: int = 400,
     grid_range: tuple[float, float] = (-2.0, 2.0),
 ) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
-    """
-    Returns (train, query, test, adv_test, meta)
-
-    meta additionally includes (when dim==1):
-      meta['X_grid']   shape (n_grid, 1)
-      meta['F_grid']   shape (n_grid, Ndec)  # latent GP draw on grid (no obs noise)
-    """
+ 
 
     torch.manual_seed(config.seed)
     gen_data = torch.Generator(device=device).manual_seed(config.seed)
