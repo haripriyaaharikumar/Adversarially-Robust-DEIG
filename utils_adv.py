@@ -21,10 +21,7 @@ def _pred_mean_var_y(
     likelihood: gpytorch.likelihoods.GaussianLikelihood,
     X: torch.Tensor,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
-    """
-    Observation-space predictive mean/variance for y:
-      p(y|X,D) from likelihood(model(X))
-    """
+
     model.eval()
     likelihood.eval()
     with gpytorch.settings.fast_pred_var():
@@ -37,10 +34,7 @@ def _pred_mean_covar_f(
     model: gpytorch.models.ExactGP,
     X: torch.Tensor,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
-    """
-    Latent predictive mean/covariance for f:
-      p(f|X,D) from model(X)
-    """
+
     model.eval()
     with gpytorch.settings.fast_pred_var():
         post = model(X)
@@ -48,19 +42,13 @@ def _pred_mean_covar_f(
 
 
 def _gaussian_entropy_diag_from_var(var: torch.Tensor) -> torch.Tensor:
-    """
-    Differential entropy of independent Gaussians (diagonal approx):
-      H ≈ Σ_t 0.5*log(2πe v_t)
-    """
+
     var = var.squeeze(-1) if var.ndim == 2 and var.shape[-1] == 1 else var
     return torch.log(torch.sqrt(2 * torch.pi * torch.e * var))
 
 
 def _gaussian_entropy_full_from_covar(covar: torch.Tensor) -> torch.Tensor:
-    """
-    Differential entropy of multivariate Gaussian with full covariance Σ:
-      H = 0.5 * [ T*log(2πe) + log det(Σ) ]
-    """
+
     T = covar.shape[0]
     jitter = 1e-8 * torch.eye(T, dtype=covar.dtype, device=covar.device)
     sign, logabsdet = torch.linalg.slogdet(covar + jitter)
@@ -75,34 +63,31 @@ def decision_entropy(
     dtype: torch.dtype = torch.float64,
 ) -> np.ndarray:
     K = len(M)
-    X_t = torch.as_tensor(X, dtype=dtype, device=device)  # [N,D]
+    X_t = torch.as_tensor(X, dtype=dtype, device=device)  
     N = X_t.size(0)
 
     mu_list, var_list = [], []
     with gpytorch.settings.fast_pred_var():
         for model, _lh in M:
             model.eval()
-            post = model(X_t) ## assume this is noiseless, retunrs f(X_t) - latent function
+            post = model(X_t) 
             mu_list.append(post.mean)
             var_list.append(post.variance.clamp_min(1e-12))
 
-    mu = torch.stack(mu_list, dim=1)   # [N,K]
-    var = torch.stack(var_list, dim=1) # [N,K]
+    mu = torch.stack(mu_list, dim=1)   
+    var = torch.stack(var_list, dim=1) 
 
-    eps = torch.randn((config.Ns, N, K), dtype=dtype, device=device) ##Ns is 10000 in config, which is pretty good
+    eps = torch.randn((config.Ns, N, K), dtype=dtype, device=device) 
     samples = mu.unsqueeze(0) + torch.sqrt(var).unsqueeze(0) * eps
 
-    dbest = torch.argmax(samples, dim=2)  # [Ns, N]
+    dbest = torch.argmax(samples, dim=2) 
 
-    one_hot = F.one_hot(dbest.to(torch.int64), num_classes=K).to(dtype)  # [Ns,N,K]
-    p = one_hot.mean(dim=0).clamp_min(torch.finfo(dtype).eps)            # [N,K]
+    one_hot = F.one_hot(dbest.to(torch.int64), num_classes=K).to(dtype)  
+    p = one_hot.mean(dim=0).clamp_min(torch.finfo(dtype).eps)           
 
-    H = -(p * p.log()).sum(dim=1)  # [N] - size of the input which is one - for a single test data
+    H = -(p * p.log()).sum(dim=1)  
     return H
 
-# -----------------------------------------------------------------------------
-# Adversarially Robust Decision-EIG for GPyTorch
-# -----------------------------------------------------------------------------
 
 def _validate_adv_dims(D: int, adv_dims: Optional[Sequence[int]]) -> List[int]:
     if adv_dims is None:
@@ -112,7 +97,6 @@ def _validate_adv_dims(D: int, adv_dims: Optional[Sequence[int]]) -> List[int]:
 
 def make_adv_points_torch(x: torch.Tensor, adv_dims: Optional[Sequence[int]], eps: float | Sequence[float], n_adv: int, *, device: Optional[str] = None, dtype: Optional[torch.dtype] = None, rng: Optional[np.random.Generator] = None) -> torch.Tensor:
 
-    # assert x.ndim == 2 and x.shape[0] == 1, "x must be shape (1, D)"
     D = x.shape[1]
     adv_dims = _validate_adv_dims(D, adv_dims)
 
@@ -162,16 +146,15 @@ def estimate_robust_decision_entropy_mc(
             model.to(dev)
             (model.double() if dt == torch.float64 else model.float())
             model.eval()
-            posts.append(model(X_adv))  # joint MVN over f(X_adv): noiseless, same as decision
+            posts.append(model(X_adv))  
 
-    # sample jointly for each arm: [n_post, K, n_adv]
     samps = torch.stack(
         [posts[k].rsample(sample_shape=torch.Size([n_post])).squeeze(-1) for k in range(K)],
         dim=1
     )
 
-    robust_scores = samps.min(dim=2).values   # [n_post, K]
-    dbest = robust_scores.argmax(dim=1)       # [n_post]
+    robust_scores = samps.min(dim=2).values   
+    dbest = robust_scores.argmax(dim=1)      
 
     counts = torch.bincount(dbest, minlength=K).to(dtype=dt)
     p = (counts / counts.sum().clamp_min(1.0)).clamp_min(torch.finfo(dt).eps)
@@ -180,20 +163,19 @@ def estimate_robust_decision_entropy_mc(
 
 
 ###########################################################################
-# Acquisition functions
+# Acquisition function
 ###########################################################################
 
 
-## Adversarially Robust Decision EIG - min over decision
 @torch.no_grad()
 def arobust_deig(
     models,
-    Xtrain: np.ndarray,  # kept for signature compatibility; not used in your code
+    Xtrain: np.ndarray,  
     Xcand: np.ndarray,
     Xtest: np.ndarray,
     n_gh: int = 11,
     normalize_gh: bool = True,
-    entropy_mode: str = "diag",   # "diag" or "full"
+    entropy_mode: str = "diag",   
     device: str = "cpu",
     dtype: torch.dtype = torch.float64,
     adv_dims=[0],
@@ -217,7 +199,6 @@ def arobust_deig(
         dq = int(Xcand["d"][i])
 
         mdl, lh = models[dq]
-        # print (len(models))
         mu_q, var_q = _pred_mean_var_y(mdl, lh, xq)
         mu_q = mu_q.squeeze()
         var_q = var_q.squeeze()
@@ -227,7 +208,7 @@ def arobust_deig(
 
         for j in range(n_gh):
             models_cp = [
-                [copy.deepcopy(mdl), lh]   # list, not tuple
+                [copy.deepcopy(mdl), lh]   
                 for (mdl, lh) in models
             ]
             mdl_cp, lh_cp = models_cp[dq]
@@ -242,7 +223,6 @@ def arobust_deig(
                                                           device=device, dtype=dtype)
             exp_H_after = exp_H_after + w[j] * H_rob
 
-        # scores[i] = gh_norm * exp_H_after
         scores[i] = exp_H_after
 
     return np.argmin(scores.detach().cpu().numpy())
