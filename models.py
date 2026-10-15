@@ -54,7 +54,6 @@ def train_exact_gp(
     lr: float = 0.05,
     noise_init: Optional[float] = None,
 ) -> Tuple[ExactGPModel, gpytorch.likelihoods.GaussianLikelihood]:
-    """Fit an Exact GP on (X,y)."""
     X = X.to(device=device, dtype=dtype)
     y = y.to(device=device, dtype=dtype)
 
@@ -89,11 +88,7 @@ def initialize_GPs(
     iters: int = 250,
     lr: float = 0.05,
 ) -> List[Tuple[ExactGPModel, gpytorch.likelihoods.GaussianLikelihood]]:
-    """
-    Train one GP per arm (decision)
-    Returns:
-      - models_per_arm: list of (model, likelihood)
-    """
+
     set_seed(1432, deterministic=True)
     X_all = torch.from_numpy(_to_2d(x_train["x"])).to(device=device, dtype=dtype)
 
