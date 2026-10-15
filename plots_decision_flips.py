@@ -45,7 +45,7 @@ base_path2 = f"./results/1d3dec_Nadv5000_eps0.3/"
 base_path3 = base_path2
 
 for altype in al_types:
-    flip_fraction_seeds = []   # list of (Nacq,) arrays
+    flip_fraction_seeds = []   
 
     base_path = base_path2 if altype == "arobust_deig" else base_path1
     all_decisions = []
