@@ -28,9 +28,8 @@ run_end = 500
 
 run_ids = range(1, run_end)
 
-endval = 5000          # number of adversarial samples you evaluate on
-
-alpha = 0.1           # CVaR lower tail fraction (10%)
+endval = 5000         
+alpha = 0.1           
 
 plt.figure(figsize=(8, 6))
 Nacq = 20
@@ -45,7 +44,6 @@ base_path2 = f"./results/1d3dec_Nadv5000_eps0.3/"
 base_path3 = base_path2
 
 def cvar_lower(x: np.ndarray, alpha: float = 0.1) -> float:
-    """Average of the worst alpha-fraction of x."""
     x = np.asarray(x).reshape(-1)
     k = max(1, int(np.ceil(alpha * x.size)))
     return np.sort(x)[:k].mean()
@@ -53,7 +51,6 @@ def cvar_lower(x: np.ndarray, alpha: float = 0.1) -> float:
 metrics_to_plot = ["mean", "worst", "cvar"]
 fig, axes = plt.subplots(1, 3, figsize=(18, 5), sharex=True)
 for altype in al_types:
-    # store per-seed metric curves; each element becomes (A,) after aggregation over adv samples
     curves_mean = []
     curves_worst = []
     curves_cvar = []
@@ -63,21 +60,20 @@ for altype in al_types:
     for r in run_ids:
         dpred_path = os.path.join(base_path, f"{altype}_dpred_{dim}deci{deci}seeds_{r}.npy")
 
-        d_pred = np.load(dpred_path)  # (A,)
+        d_pred = np.load(dpred_path)  
 
         Y_adv_path = os.path.join(base_path2, f"Y_adv_{altype}{dim}deci{deci}seeds_{r}.npy")
    
-        Y_all_adv = np.load(Y_adv_path)  # shape: (Nadv_eval, Ndec) or similar
+        Y_all_adv = np.load(Y_adv_path)  
     
-        A = len(d_pred) # number of acquisitions
+        A = len(d_pred)
         m = np.zeros(A)
         w = np.zeros(A)
         c = np.zeros(A)
 
         for i in range(A):
             id_pred = int(d_pred[i])
-            y = Y_all_adv[:endval, id_pred]   # (endval,)
-            # print (y.shape)
+            y = Y_all_adv[:endval, id_pred]   
             
             m[i] = y.mean()
             w[i] = y.min()
@@ -89,7 +85,7 @@ for altype in al_types:
     
     print (altype)
 
-    curves_mean = np.vstack(curves_mean)   # (S, A)
+    curves_mean = np.vstack(curves_mean)  
     curves_worst = np.vstack(curves_worst)
     curves_cvar = np.vstack(curves_cvar)
 
@@ -114,8 +110,7 @@ for altype in al_types:
             marker="o",
             linestyle="-", 
             color=color_map[altype],
-            label="AR-DEIG (ours)"   # custom legend name
-                      # draw on top
+            label="AR-DEIG (ours)"   
         )
     else:
         axes[0].plot(steps[:K], mean_mu[:K], marker="o",color=color_map[altype], label=altype_label[altype])
@@ -125,8 +120,8 @@ for altype in al_types:
         axes[1].plot(steps[:K], worst_mu[:K],
             marker="o",
             linestyle="-", color=color_map[altype],
-            label="AR-DEIG (ours)"   # custom legend name
-            )             # draw on top
+            label="AR-DEIG (ours)"   
+            )             
     else:
          axes[1].plot(steps[:K], worst_mu[:K], marker="o", label=altype_label[altype],color=color_map[altype])
 
@@ -137,7 +132,7 @@ for altype in al_types:
             marker="o",
             linestyle="-", color=color_map[altype],
             label="AR-DEIG (ours)")
-                         # draw on top
+                         
     else:
         axes[2].plot(steps[:K], cvar_mu[:K],
             marker="o", color=color_map[altype],
@@ -156,7 +151,6 @@ for ax in axes:
 
 axes[0].set_ylabel("Outcome under perturbed contexts", fontsize=15)
 
-# axes[0].legend(framealpha=0.3)
 axes[0].legend(
     loc="upper center",
     ncol=3, fontsize=12,
