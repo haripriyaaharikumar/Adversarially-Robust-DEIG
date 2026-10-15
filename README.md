@@ -1,4 +1,4 @@
-# Adversarially-Robust-DEIG : Accepted paper in UAI 2026 Robust Bayesian Decision Making under Adversarial Uncertainty
+# Adversarially-Robust-DEIG : Accepted paper in UAI 2026 Robust Bayesian Decision Making under Adversarial Uncertainty https://arxiv.org/pdf/2607.08590
 
 Install the following Python libraries before running the code:
 
