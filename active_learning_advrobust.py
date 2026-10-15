@@ -8,7 +8,7 @@ import torch
 import torch.nn.functional as F
 from utils_adv import targeted_oeig, decision_eig, arobust_deig, arobust_deig_max_xa, random_sampling, peig, us_deig, _pred_mean_var_y
 
-from models import _to_2d  # reuse the same helper
+from models import _to_2d  
 import gpytorch
 import config as config
 import copy
