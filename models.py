@@ -1,4 +1,3 @@
-# models.py
 from __future__ import annotations
 
 from typing import List, Optional, Tuple
@@ -9,9 +8,6 @@ import gpytorch
 import os
 import random
 
-# -----------------------------
-# Exact GP model
-# -----------------------------
 def set_seed(seed: int = 1432, deterministic: bool = True):
     os.environ["PYTHONHASHSEED"] = str(seed)
     random.seed(seed)
@@ -22,16 +18,13 @@ def set_seed(seed: int = 1432, deterministic: bool = True):
         torch.cuda.manual_seed_all(seed)
 
     if deterministic:
-        # Deterministic torch operations (may raise if an op is nondeterministic)
         torch.use_deterministic_algorithms(True)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
-        # Reduce GPU numeric variation
         torch.backends.cuda.matmul.allow_tf32 = False
         torch.backends.cudnn.allow_tf32 = False
 
-        # For CUDA determinism in matmul/solve (must be set before CUDA context is created)
         os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 
 class ExactGPModel(gpytorch.models.ExactGP):
@@ -49,7 +42,6 @@ class ExactGPModel(gpytorch.models.ExactGP):
 
 
 def _to_2d(x: np.ndarray) -> np.ndarray:
-    # return x.reshape(-1, 1) if x.ndim == 1 else x
     return x.reshape(1, -1) if x.ndim == 1 else x
 
 
@@ -104,8 +96,7 @@ def initialize_GPs(
     """
     set_seed(1432, deterministic=True)
     X_all = torch.from_numpy(_to_2d(x_train["x"])).to(device=device, dtype=dtype)
-    # print ("check 2d shape")
-    # print (X_all.shape)
+
     y_all = torch.from_numpy(x_train["y"])
     if y_all.ndim > 1:
         y_all = y_all.squeeze(-1)
