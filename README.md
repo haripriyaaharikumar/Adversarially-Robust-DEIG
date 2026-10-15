@@ -38,17 +38,8 @@ Running the Code
 
         main_nonsmooth.py
 
-3. Run the experiment
 
-    Execute the following command:
-
-        python launch_nonsmooth.py [number_of_seeds]
-
-    Example:
-
-    python launch_nonsmooth.py 10
-
-4. Plotting Adversarial Robustness Metrics
+3. Plotting Adversarial Robustness Metrics
 
 
 To generate plots for adversarial robustness metrics (e.g., mean, worst-case, and CVaR10), run experiments with:
