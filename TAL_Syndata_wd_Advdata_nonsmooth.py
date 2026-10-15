@@ -35,7 +35,7 @@ def gen_decision_torch(
 
 
 # -----------------------------
-# GP sampler (ARD + choice of kernel)
+# GP sampler 
 # -----------------------------
 def _build_kernel_ard(
     dim: int,
@@ -244,9 +244,6 @@ def generation_gpytorch_like_gpy(
     Y_all = torch.zeros((N_all, Ndec), dtype=dtype, device=device)
     F_grid = torch.zeros((X_grid.shape[0], Ndec), dtype=dtype, device=device) if dim == 1 else None
 
-    # -----------------------------
-    # Robustness geometry (KEY)
-    # -----------------------------
     smooth_arm = 0
     rough_arms = [i for i in range(Ndec) if i != smooth_arm]
 
@@ -279,12 +276,6 @@ def generation_gpytorch_like_gpy(
         for d in adv_dims_int:
             l[i, d] = l_rough
 
-    # For non-attacked dims, keep the random initial l[i, :]
-    # (this makes the effect "directional": only adversarial dims induce instability)
-
-    # -----------------------------
-    # Sample per-arm jointly (data+adv+grid)
-    # -----------------------------
     for i in range(Ndec):
         kernel_type = "matern"
         nu_i = nu_smooth if i == smooth_arm else nu_rough
@@ -367,108 +358,3 @@ def generation_gpytorch_like_gpy(
 
     return train, query, test, adv_test, meta
 
-
-# -----------------------------
-# One-figure plot: curves + points
-# -----------------------------
-# def plot_everything_1d(train: dict, query: dict, test: dict, meta: dict,
-#                        filename: str | None = None,
-#                        show_eps: bool = True):
-#     X_grid = meta.get("X_grid", None)
-#     F_grid = meta.get("F_grid", None)
-#     if X_grid is None or F_grid is None:
-#         raise ValueError("meta must contain 'X_grid' and 'F_grid' (run generation with dim=1).")
-
-#     Xg = np.asarray(X_grid).reshape(-1)
-#     Fg = np.asarray(F_grid)
-#     Ndec = Fg.shape[1]
-#     colors = plt.cm.tab10.colors
-
-#     Xtr = np.asarray(train["x"]).reshape(-1)
-#     ytr = np.asarray(train["y"]).reshape(-1)
-#     Dtr = np.asarray(train["d"]).astype(int).reshape(-1)
-
-#     Xqu = np.asarray(query["x"]).reshape(-1)
-#     yqu = np.asarray(query["y"]).reshape(-1)
-#     Dqu = np.asarray(query["d"]).astype(int).reshape(-1)
-
-#     Xte = np.asarray(test["x"]).reshape(-1)
-#     Yte = np.asarray(test["Y"])
-
-#     plt.figure(figsize=(11, 4.8))
-
-#     # curves
-#     for k in range(Ndec):
-#         plt.plot(Xg, Fg[:, k], color=colors[k % 10], label=f"GP curve (arm {k})")
-
-#     # epsilon region around first test point (for display)
-#     if show_eps and len(Xte) > 0:
-#         eps = float(meta.get("eps_adv", 0.0))
-#         x0 = float(Xte[0])
-#         if eps > 0:
-#             plt.axvline(x0 - eps, linestyle="--", linewidth=1)
-#             plt.axvline(x0 + eps, linestyle="--", linewidth=1)
-
-#     # train points
-#     for k in range(Ndec):
-#         m = (Dtr == k)
-#         if np.any(m):
-#             plt.scatter(Xtr[m], ytr[m], color=colors[k % 10], s=28, alpha=0.85,
-#                         marker="o", edgecolors="k", linewidths=0.25, label=f"train (d={k})")
-
-#     # query points
-#     for k in range(Ndec):
-#         m = (Dqu == k)
-#         if np.any(m):
-#             plt.scatter(Xqu[m], yqu[m], facecolors="none", edgecolors=colors[k % 10],
-#                         s=55, alpha=0.9, marker="^", linewidths=1.2, label=f"query (d={k})")
-
-#     # test outcomes
-#     for t in range(len(Xte)):
-#         for k in range(Ndec):
-#             plt.scatter([Xte[t]], [Yte[t, k]], color=colors[k % 10], s=140, marker="X",
-#                         edgecolors="k", linewidths=0.5,
-#                         label=("test Y (per-arm)" if (t == 0 and k == 0) else None))
-
-#     plt.xlabel("x (1D)")
-#     plt.ylabel("reward")
-#     plt.title("GP reward curves + train/query/test points (one figure)")
-#     plt.grid(alpha=0.25)
-
-#     # de-duplicate legend
-#     handles, labels = plt.gca().get_legend_handles_labels()
-#     uniq = {}
-#     for h, l in zip(handles, labels):
-#         if l and l not in uniq:
-#             uniq[l] = h
-#     plt.legend(uniq.values(), uniq.keys(), ncol=3, frameon=True, fontsize=9)
-
-#     plt.tight_layout()
-#     if filename is not None:
-#         plt.savefig(filename, dpi=220)
-#     plt.show()
-
-
-# if __name__ == "__main__":
-#     train, query, test, adv, meta = generation_gpytorch_like_gpy(
-#         dim=1,
-#         std=0.05,
-#         Ndec=config.Ndec,
-#         Ntrain=200,
-#         Nquery=50,
-#         Ntest=1,
-#         seed_split=config.seed_split,
-#         device="cpu",
-#         dtype=torch.float64,
-#         add_adv_eval=True,
-#         jitter=1e-6,
-#         n_adv_eval=10,
-#         n_grid=500,
-#         grid_range=(-2.0, 2.0),
-#     )
-
-    # plot_everything_1d(
-    #     train, query, test, meta,
-    #     filename=f"Nonsmooth_Syndata_all_{config.Ndec}.png",
-    #     show_eps=True,
-    # )
