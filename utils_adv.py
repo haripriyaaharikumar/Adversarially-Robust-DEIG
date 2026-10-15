@@ -1,4 +1,4 @@
-# utils.py
+
 from __future__ import annotations
 
 import math
@@ -10,13 +10,11 @@ import gpytorch
 import torch.nn.functional as F
 from typing import List, Tuple, Optional, Sequence
 
-from models import _to_2d  # reuse the same helper
+from models import _to_2d  
 import config as config
 import copy
 
-# -----------------------------
-# Predictive moments helpers
-# -----------------------------
+
 @torch.no_grad()
 def _pred_mean_var_y(
     model: gpytorch.models.ExactGP,
