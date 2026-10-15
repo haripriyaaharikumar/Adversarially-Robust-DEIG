@@ -67,7 +67,7 @@ def generation_gpytorch_like_gpy(
     gen_data = torch.Generator(device=device)
     gen_data.manual_seed(config.seed)
 
-    Ntot = Ntrain + Nquery + Ntest #Ntest is 1
+    Ntot = Ntrain + Nquery + Ntest 
 
     X = torch.randn((Ntot, dim), device=device, dtype=dtype, generator=gen_data)
 
