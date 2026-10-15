@@ -43,11 +43,7 @@ if __name__ == "__main__":
         iters=250,
         lr=0.05,
     )
-    # altype = "random_sampling"
-    # altype = "us_eig"
-    # altype = "peig"
-    # altype = "targeted_oeig"
-    # altype = "decision_eig"
+ 
     altype = "arobust_deig"
    
 
