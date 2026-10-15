@@ -87,8 +87,6 @@ def generation_gpytorch_like_gpy(
     l = math.sqrt(dim) * (0.25 + 0.75 * torch.rand((Ndec, dim), generator=gen_data, device=device, dtype=dtype))
     v = 0.5 + 2.0 * torch.rand((Ndec,), generator=gen_data, device=device, dtype=dtype)
 
-    # IMPORTANT: your sampler currently accepts scalar lengthscale/variance.
-    # To match ARD, we implement an ARD-aware sampler here.
     def sample_gp_at_X_gpytorch_ard(
         X_: torch.Tensor,
         lengthscale_vec: torch.Tensor,  # (dim,)
