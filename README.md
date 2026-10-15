@@ -42,17 +42,5 @@ Running the Code
 3. Plotting Adversarial Robustness Metrics
 
 
-To generate plots for adversarial robustness metrics (e.g., mean, worst-case, and CVaR10), run experiments with:
-
-    1 dimension
-
-    3 decisions
-
-Intermediate results for ε = 0.3 used for plotting are stored in:
-
-    results/1d3dec_Nadv5000_eps0.3/
-
-Generate the evaluation metric plots using:
-
     python plots_evalmetrics_adv_robs.py
 
