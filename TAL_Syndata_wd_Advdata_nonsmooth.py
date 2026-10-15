@@ -7,12 +7,8 @@ import numpy as np
 import torch
 import gpytorch
 
-import config1 as config  # expects: seed, seed_split, Ndec, adv_dims, eps_adv
+import config1 as config  
 
-
-# -----------------------------
-# Decision sampling
-# -----------------------------
 def gen_decision_torch(
     Ntrain: int,
     Nquery: int,
@@ -27,20 +23,16 @@ def gen_decision_torch(
     alpha = torch.ones((Ndec,), dtype=dtype, device=device)
     mix = torch.distributions.Dirichlet(alpha).sample()
 
-    # 65% uniform + 35% random mixture
     p = (0.65 / Ndec) * torch.ones((Ndec,), dtype=dtype, device=device) + 0.35 * mix
     p = p / p.sum()
 
     return torch.multinomial(p, num_samples=Ntot, replacement=True)
 
 
-# -----------------------------
-# GP sampler 
-# -----------------------------
 def _build_kernel_ard(
     dim: int,
-    lengthscale_vec: torch.Tensor,     # (dim,)
-    variance_scalar: torch.Tensor,     # scalar
+    lengthscale_vec: torch.Tensor,     
+    variance_scalar: torch.Tensor,     
     kernel_type: str = "matern",
     matern_nu: float = 1.5,
     device: str | torch.device = "cpu",
@@ -60,15 +52,14 @@ def _build_kernel_ard(
 
 
 def sample_gp_joint_at_X(
-    X_joint: torch.Tensor,             # (N_joint, dim)
-    lengthscale_vec: torch.Tensor,     # (dim,)
-    variance_scalar: torch.Tensor,     # scalar
+    X_joint: torch.Tensor,            
+    lengthscale_vec: torch.Tensor,     
+    variance_scalar: torch.Tensor,     
     jitter: float,
     generator: torch.Generator,
     kernel_type: str,
     matern_nu: float,
 ) -> torch.Tensor:
-    """Sample one GP function draw jointly at X_joint."""
     dim = X_joint.shape[1]
     kernel = _build_kernel_ard(
         dim=dim,
@@ -87,11 +78,8 @@ def sample_gp_joint_at_X(
     return L @ z
 
 
-# -----------------------------
-# Adversarial eval set builder
-# -----------------------------
 def make_adv_eval_points(
-    x_test: torch.Tensor,                 # (Ntest, dim)
+    x_test: torch.Tensor,                
     adv_dims: Optional[Sequence[int]] = None,
     eps_adv: float = 0.1,
     n_eval: int = 1,
@@ -120,9 +108,6 @@ def make_adv_eval_points(
     return X_rep.view(-1, dim)
 
 
-# -----------------------------
-# Main generator
-# -----------------------------
 def generation_gpytorch_like_gpy(
     dim: int,
     std: float,
@@ -136,7 +121,6 @@ def generation_gpytorch_like_gpy(
     add_adv_eval: bool = True,
     jitter: float = 1e-6,
     n_adv_eval: int = 10,
-    # plotting grid (only used when dim==1)
     n_grid: int = 400,
     grid_range: tuple[float, float] = (-2.0, 2.0),
 ) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
@@ -153,24 +137,19 @@ def generation_gpytorch_like_gpy(
 
     Ntot = Ntrain + Nquery + Ntest
 
-    # Covariates
     X = torch.randn((Ntot, dim), device=device, dtype=dtype, generator=gen_data)
 
-    # Decisions
     D = gen_decision_torch(Ntrain=Ntrain, Nquery=Nquery, Ndec=Ndec, Ntest=Ntest, device=device, dtype=dtype)
 
-    # Kernel hyperparams per arm (initialize, then override attacked dims below)
     l = math.sqrt(dim) * (0.25 + 0.75 * torch.rand((Ndec, dim), generator=gen_data, device=device, dtype=dtype))
     v = 0.5 + 2.0 * torch.rand((Ndec,), generator=gen_data, device=device, dtype=dtype)
 
-    # Split RNG
     gen_split = torch.Generator(device=device).manual_seed(seed_split)
 
     idx_tot = torch.arange(Ntot, device=device)
     if Ntrain < Ndec:
         raise ValueError(f"Ntrain ({Ntrain}) must be >= Ndec ({Ndec}) to pick one per decision.")
 
-    # pick one per decision
     idx_tr = torch.empty((Ntrain,), dtype=torch.long, device=device)
     for i in range(Ndec):
         idx_d = torch.nonzero(D == i, as_tuple=False).squeeze(-1)
@@ -179,7 +158,6 @@ def generation_gpytorch_like_gpy(
         pick = idx_d[torch.randint(low=0, high=idx_d.numel(), size=(1,), generator=gen_split)]
         idx_tr[i] = pick
 
-    # ensure unique for first Ndec
     idx_first = torch.unique(idx_tr[:Ndec])
     if idx_first.numel() != Ndec:
         used = set()
@@ -202,7 +180,6 @@ def generation_gpytorch_like_gpy(
     idx_extra = idx_rem[perm[:n_extra]]
     idx_tr[Ndec:] = idx_extra
 
-    # remainder -> query/test
     mask_keep2 = torch.ones((idx_rem.numel(),), dtype=torch.bool, device=device)
     mask_keep2[perm[:n_extra]] = False
     idx_left = idx_rem[mask_keep2]
@@ -211,11 +188,10 @@ def generation_gpytorch_like_gpy(
     idx_left = idx_left[perm2]
 
     idx_qu = idx_left[:Nquery]
-    idx_te = idx_left[Nquery:Nquery + Ntest]  # length Ntest (explicit)
+    idx_te = idx_left[Nquery:Nquery + Ntest]  
 
-    # adversarial eval points
     adv_dims = config.adv_dims
-    eps_adv = float(getattr(config, "eps_adv", 0.1)) #get value from the config file
+    eps_adv = float(getattr(config, "eps_adv", 0.1))
 
     if add_adv_eval:
         x_test_for_adv = X[idx_te, :]
@@ -229,38 +205,31 @@ def generation_gpytorch_like_gpy(
     else:
         X_adv_eval = torch.empty((0, dim), dtype=dtype, device=device)
 
-    # plotting grid (dim==1 only)
     if dim == 1:
         X_grid = torch.linspace(grid_range[0], grid_range[1], n_grid, dtype=dtype, device=device).view(-1, 1)
     else:
         X_grid = torch.empty((0, dim), dtype=dtype, device=device)
 
-    # Build joint inputs for consistent GP draw on (data + adv + grid)
     X_all = torch.cat([X, X_adv_eval], dim=0)
     X_joint = torch.cat([X_all, X_grid], dim=0)
     N_all = X_all.shape[0]
 
-    # Outputs
     Y_all = torch.zeros((N_all, Ndec), dtype=dtype, device=device)
     F_grid = torch.zeros((X_grid.shape[0], Ndec), dtype=dtype, device=device) if dim == 1 else None
 
     smooth_arm = 0
     rough_arms = [i for i in range(Ndec) if i != smooth_arm]
 
-    # Kernel smoothness:
     nu_smooth = 2.5
     nu_rough = 0.5
 
-    # LENGTHSCALES TIED TO EPS (KEY):
-    # smooth: changes gently across [-eps, eps]
-    # rough : can vary a lot inside [-eps, eps]
+  
     # l_smooth = 2.0 * eps_adv
     # l_rough = 0.6 * eps_adv #0.5*eps_adv
 
-    l_smooth = 2.0 * 0.3 ##  curves have fixed shape
+    l_smooth = 2.0 * 0.3 
     l_rough = 0.6 * 0.3 
 
-    # Amplitude: make rough arms slightly "tempting" (higher amplitude), smooth arm stable but not dominating
     v[smooth_arm] *= 1.0
     for i in rough_arms:
         v[i] *= 1.2
@@ -269,7 +238,6 @@ def generation_gpytorch_like_gpy(
     if len(adv_dims_int) == 0:
         adv_dims_int = list(range(dim))
 
-    # Set attacked-dim lengthscales explicitly
     for d in adv_dims_int:
         l[smooth_arm, d] = l_smooth
     for i in rough_arms:
@@ -291,16 +259,14 @@ def generation_gpytorch_like_gpy(
         )
 
         f_all_i = f_joint[:N_all]
-        f_grid_i = f_joint[N_all:]  # (n_grid,) if dim==1 else empty
+        f_grid_i = f_joint[N_all:]  
 
-        # add observation noise to data+adv only
         f_all_i_noisy = f_all_i + std * torch.randn((N_all,), dtype=dtype, device=device, generator=gen_data)
 
         Y_all[:, i] = f_all_i_noisy
         if dim == 1:
-            F_grid[:, i] = f_grid_i  # latent (no noise) for clean curves
+            F_grid[:, i] = f_grid_i  
 
-    # build dicts
     train_x = X[idx_tr, :]
     train_d = D[idx_tr]
     train_y = Y_all[idx_tr, train_d].reshape(Ntrain, 1)
