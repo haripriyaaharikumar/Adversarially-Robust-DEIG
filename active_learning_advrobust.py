@@ -24,7 +24,7 @@ def estimate_entropy(
     dtype: torch.dtype = torch.float64,
 ) -> np.ndarray:
     K = len(M)
-    X_t = torch.as_tensor(X, dtype=dtype, device=device)  # [N,D]
+    X_t = torch.as_tensor(X, dtype=dtype, device=device) 
     N = X_t.size(0)
 
     mu_list, var_list = [], []
